@@ -5,7 +5,7 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Sequence, Tuple
 
 from prompt_runner import CLI_NAMESPACE_DEFAULT
 
@@ -18,6 +18,11 @@ from prompt_runner.openai_session import (
 from prompt_runner.prompt_manifest import load_manifest
 from prompt_runner.tool_catalog import ToolSpec, load_tool_catalog
 from prompt_runner.mcp_client import MCPClient
+
+HANDSHAKE_PROMPT = """You must ensure Holomem namespace "{namespace}" is active for subsequent tasks.
+1. Call holomem_switch_to_namespace with name="{namespace}" and create_if_missing=True.
+2. Verify via holomem_get_current_namespace.
+Once confirmed, respond exactly once with {{"final_summary": "Namespace {namespace} ready"}}."""
 
 
 def _default_preflight_specs(namespace: str) -> List[str]:
@@ -34,7 +39,7 @@ def _build_parser() -> argparse.ArgumentParser:
         description="LLM-driven MCP prompt runner (Holomem-first).",
     )
     parser.add_argument("--namespace", default=CLI_NAMESPACE_DEFAULT, help="Target namespace (default: ns-dra-llm-v3-prompt-cli)")
-    parser.add_argument("--prompt-id", action="append", required=True, help="Prompt identifier (repeatable for multiple prompts)")
+    parser.add_argument("--prompt-id", action="append", required=False, help="Prompt identifier (repeatable for multiple prompts)")
     parser.add_argument("--verbose", action="store_true", help="Print progress messages while running prompts")
     parser.add_argument("--output-dir", default="prompt_runs", help="Directory to store run artifacts")
     parser.add_argument("--checkpoint-a", dest="checkpoint_a", help="Baseline checkpoint id (drift prompt)")
@@ -68,6 +73,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--no-preflight",
         action="store_true",
         help="Disable automatic preflight tool instructions.",
+    )
+    parser.add_argument(
+        "--no-truncate-responses",
+        action="store_true",
+        help="Disable automatic truncation of large tool responses (enabled by default to prevent context overflow).",
     )
     return parser
 
@@ -198,29 +208,55 @@ def _run_direct_preflight(
     return results
 
 
-def _fetch_diff_report(
-    client: MCPClient,
-    *,
-    namespace: str,
-    checkpoint_a: Optional[str],
-    checkpoint_b: Optional[str],
-) -> Optional[str]:
-    if not checkpoint_a or not checkpoint_b:
-        return None
-    payload = {
-        "from_version": checkpoint_a,
-        "to_version": checkpoint_b,
-        "namespace": namespace,
+def _run_namespace_handshake(
+    args: argparse.Namespace,
+    tool_catalog: Dict[str, ToolSpec],
+    system_prompt: str,
+    tool_timeout: float | None,
+    heartbeat_interval: float | None,
+    preflight_specs: Sequence[Tuple[str, Dict[str, Any]]],
+    mcp_client: MCPClient,
+) -> None:
+    handshake_tools = {
+        name: spec
+        for name, spec in tool_catalog.items()
+        if name in {"holomem_switch_to_namespace", "holomem_get_current_namespace"}
     }
-    try:
-        response = client.call("holomem_diffImpact", payload)
-    except Exception as exc:  # pragma: no cover - network/harness
-        print(f"[prompt-runner] WARN: holomem_diffImpact prefetch failed: {exc}", flush=True)
-        return None
-    try:
-        return json.dumps(response, indent=2, sort_keys=True)
-    except Exception:
-        return str(response)
+    if not handshake_tools:
+        raise SystemExit("Handshake requires holomem_switch_to_namespace and holomem_get_current_namespace tools")
+    timestamped = _timestamp_dir()
+    run_dir = Path(args.output_dir) / "handshake" / timestamped
+    run_dir.mkdir(parents=True, exist_ok=True)
+    status_path = run_dir / f"status.handshake.{timestamped}.log"
+    user_prompt = HANDSHAKE_PROMPT.format(namespace=args.namespace)
+    if args.verbose:
+        print("[prompt-runner] Starting namespace handshake via LLM", flush=True)
+        if preflight_specs:
+            print(f"[prompt-runner] Preflight tools: {_summarize_preflight(preflight_specs)}", flush=True)
+    _run_direct_preflight(mcp_client, preflight_specs, verbose=args.verbose)
+    session = OpenAISession(
+        model=None,
+        tool_specs=handshake_tools,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        namespace=args.namespace,
+        verbose=args.verbose,
+        tool_timeout=tool_timeout,
+        heartbeat_interval=heartbeat_interval,
+        status_log=status_path,
+        summary_path=None,
+        quiet=args.quiet,
+        handshake_namespace=args.namespace,
+        enable_truncation=not args.no_truncate_responses,
+    )
+    summary = session.run()
+    print(f"[prompt-runner] Handshake result: {summary}")
+
+
+def _print_available_tools(tool_catalog: Dict[str, ToolSpec]) -> None:
+    print("[prompt-runner] Tools available for further tasks:")
+    for name in sorted(tool_catalog.keys()):
+        print(f" - {name}")
 
 
 def _load_text(path: Path) -> str:
@@ -247,93 +283,103 @@ def main(argv: List[str] | None = None) -> int:
     tool_catalog = load_tool_catalog(root / "toolspecs.json")
     api_reference = _load_text(root / "prompts" / "Holomem-API-reference.md")
     mcp_reference = _load_text(root / "prompts" / "mcp_tools_reference.md")
-    system_prompt = build_system_prompt(api_reference, mcp_reference, tool_catalog.values())
+
+    # Build minimal handshake tools (only 4 tools needed)
+    handshake_tools = {
+        name: spec
+        for name, spec in tool_catalog.items()
+        if name in ["holomem_switch_to_namespace", "holomem_switchToNamespace",
+                    "holomem_get_current_namespace", "holomem_getCurrentNamespace"]
+    }
+    handshake_system_prompt = build_system_prompt(api_reference, mcp_reference, handshake_tools.values())
+
     mcp_client = MCPClient()
     mcp_client.default_namespace = args.namespace
     _ensure_namespace_ready(args.namespace, mcp_client)
 
-    prompt_ids = args.prompt_id or []
-    results: Dict[str, str] = {}
-    precomputed_diff: Optional[str] = _fetch_diff_report(
-        mcp_client,
-        namespace=args.namespace,
-        checkpoint_a=args.checkpoint_a,
-        checkpoint_b=args.checkpoint_b,
-    )
-    for prompt_id in prompt_ids:
+    _run_namespace_handshake(args, handshake_tools, handshake_system_prompt, tool_timeout, heartbeat_interval, preflight_specs, mcp_client)
+    _print_available_tools(tool_catalog)
+
+    # If no prompt IDs specified, exit after handshake
+    if not args.prompt_id:
+        parser.exit(0, "Namespace handshake complete. Ready for further tasks.\n")
+
+    # Execute each specified prompt
+    for prompt_id in args.prompt_id:
         if prompt_id not in manifest:
-            raise SystemExit(f"Unknown prompt id '{prompt_id}'. Available: {', '.join(manifest)}")
+            parser.exit(1, f"Unknown prompt ID: {prompt_id}\n")
+
         metadata = manifest[prompt_id]
         variables = _build_variables(args, metadata.required_vars, metadata.optional_vars)
-        user_prompt = metadata.template_path.read_text(encoding="utf-8").format(**variables)
-        if precomputed_diff:
-            user_prompt = (
-                f"{user_prompt}\n\n"
-                "### Precomputed holomem_diffImpact evidence\n"
-                "```\n"
-                f"{precomputed_diff}\n"
-                "```\n"
-                "Use this evidence to complete the report; no additional MCP tool calls are available."
-            )
-        normalized_allowlist = _normalize_tool_allowlist(metadata.tool_allowlist)
-        if precomputed_diff:
-            session_tools = {}
-        else:
-            session_tools = _build_session_tools(tool_catalog, normalized_allowlist, preflight_specs)
 
+        # Filter tool catalog based on prompt's allowlist
+        if "*" in metadata.tool_allowlist:
+            filtered_tools = tool_catalog
+            print(f"[prompt-runner] Using all {len(tool_catalog)} tools")
+        else:
+            filtered_tools = {
+                name: spec
+                for name, spec in tool_catalog.items()
+                if name in metadata.tool_allowlist
+            }
+            print(f"[prompt-runner] Using {len(filtered_tools)} tools (filtered from {len(tool_catalog)})")
+
+        # Create timestamped run directory
         timestamped = _timestamp_dir()
         run_dir = Path(args.output_dir) / metadata.run_directory / timestamped
         run_dir.mkdir(parents=True, exist_ok=True)
-        status_path = run_dir / f"status.{prompt_id}.{timestamped}.log"
-        summary_filename = f"summary.{prompt_id}.{timestamped}.md"
-        summary_path = run_dir / summary_filename
 
-        if args.verbose:
-            print(f"[prompt-runner] Starting prompt '{prompt_id}'", flush=True)
-            if preflight_specs:
-                print(
-                    f"[prompt-runner] Preflight tools: {_summarize_preflight(preflight_specs)}",
-                    flush=True,
-                )
-        preflight_log = _run_direct_preflight(
-            mcp_client,
-            preflight_specs,
-            verbose=args.verbose,
-        )
+        # Set up file paths
+        status_path = run_dir / f"status.{prompt_id}.{timestamped}.log"
+        summary_path = run_dir / f"summary.{prompt_id}.{timestamped}.md"
+        prompt_log_path = run_dir / f"prompt.{prompt_id}.{timestamped}.log"
+
+        # Load and substitute prompt template
+        prompt_template_path = root / "prompts" / f"{prompt_id}.md"
+        user_prompt = _load_text(prompt_template_path)
+        for key, value in variables.items():
+            placeholder = "{" + key + "}"
+            user_prompt = user_prompt.replace(placeholder, value)
+
+        # Rebuild system prompt with filtered tools for this specific prompt
+        prompt_system_prompt = build_system_prompt(api_reference, mcp_reference, filtered_tools.values())
+
+        # Run the prompt
+        print(f"[prompt-runner] Running prompt: {prompt_id}")
         session = OpenAISession(
-            model=None,
-            tool_specs=session_tools,
-            system_prompt=system_prompt,
+            model=None,  # Uses OPENAI_MODEL env var
+            tool_specs=filtered_tools,  # Use filtered tools
+            system_prompt=prompt_system_prompt,  # Use rebuilt system prompt
             user_prompt=user_prompt,
             namespace=args.namespace,
+            max_calls=20,  # Default max tool calls
             verbose=args.verbose,
             tool_timeout=tool_timeout,
             heartbeat_interval=heartbeat_interval,
             status_log=status_path,
             summary_path=summary_path,
             quiet=args.quiet,
+            handshake_namespace=None,  # Already completed handshake
+            enable_truncation=not args.no_truncate_responses,
         )
-        summary = session.run()
-        summary_path.write_text(summary, encoding="utf-8")
-        log_path = run_dir / f"prompt.{prompt_id}.{timestamped}.log"
-        log_entries = []
-        if preflight_log:
-            log_entries.append({"event": "preflight_direct", "steps": preflight_log})
-        if session.calls:
-            for call in session.calls:
-                log_entries.append(
-                    {
-                        "tool": call.name,
-                        "arguments": call.arguments,
-                        "response": call.response,
-                    }
-                )
-        else:
-            log_entries.append({"event": "no_tool_calls", "message": "LLM emitted summary without MCP evidence"})
-        log_path.write_text(json.dumps(log_entries, indent=2, sort_keys=True), encoding="utf-8")
-        results[prompt_id] = str(summary_path)
 
-    parser.exit(0, json.dumps(results, indent=2, sort_keys=True) + "\n")
+        # Execute and get summary
+        summary = session.run()
+
+        # Write tool call log
+        with prompt_log_path.open("w", encoding="utf-8") as f:
+            for call in session.calls:
+                f.write(json.dumps({
+                    "tool": call.name,
+                    "arguments": call.arguments,
+                    "response": call.response
+                }) + "\n")
+
+        print(f"[prompt-runner] ✓ {prompt_id} complete")
+        print(f"[prompt-runner]   Summary: {summary_path}")
+        print(f"[prompt-runner]   Logs: {status_path}")
+
+    return 0
 
 
 def _build_variables(

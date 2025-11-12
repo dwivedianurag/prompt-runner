@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(python3:*)",
+      "Bash(pip show:*)",
+      "Bash(find:*)",
+      "Bash(python -m prompt_runner.cli:*)",
+      "Bash(env)",
+      "Bash(python:*)",
+      "Bash(OPENAI_MODEL=\"gpt-4o-mini\" python:*)",
+      "Bash(OPENAI_MODEL=\"gpt-4o-mini\" python -m prompt_runner.cli:*)",
+      "Bash(timeout 180 bash -c 'while ! grep -q \"\"complete\"\" /Users/anuragdwivedi/work/holomem_practice/llm-orchestrator/prompt_runs/drift/*/status.drift_analysis.*.log 2>/dev/null | tail -1 | grep -q \"\"final_summary\"\"; do sleep 2; done; ls -t /Users/anuragdwivedi/work/holomem_practice/llm-orchestrator/prompt_runs/drift/ | head -1')",
+      "Bash(chmod:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

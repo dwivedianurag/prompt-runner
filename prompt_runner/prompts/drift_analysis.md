@@ -1,7 +1,5 @@
-Use the precomputed Holomem evidence below to analyze code drift within the namespace `{namespace}`.
-You **cannot** call any additional MCP tools; rely solely on the provided diff data.
+Use Holomem to analyze code drift within the namespace `{namespace}`.
 Compare the following two checkpoints:
-
 Baseline: `{checkpoint_a}`
 
 Current: `{checkpoint_b}`

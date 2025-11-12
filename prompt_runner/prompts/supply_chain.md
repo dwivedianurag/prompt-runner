@@ -31,3 +31,7 @@ Please perform a Supply Chain Analysis on the project `{project_name}` in namesp
 - **Monitoring Hooks:** <metrics/alerts to watch>
 - **Next Review:** <date or trigger>
 ```
+
+When you have gathered enough evidence via HoloMem tools, you must finish by returning exactly one JSON object:
+
+{{"final_summary": "<markdown report filling the QQ template above>"}}

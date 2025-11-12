@@ -1,0 +1,7 @@
+# LLM Orchestrator Dependencies
+
+# OpenAI API client for GPT-4/GPT-5 access
+openai>=1.0.0
+
+# Note: The MCP bridge (tools/mcp/) is included in this distribution
+# and does not require separate installation.
