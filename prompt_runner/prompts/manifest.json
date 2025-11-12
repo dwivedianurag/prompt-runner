@@ -1,0 +1,20 @@
+{
+  "drift_analysis": {
+    "template": "drift_analysis.md",
+    "description": "Analyze two checkpoints for API, semantic, and architecture drift.",
+    "required_vars": ["namespace", "checkpoint_a", "checkpoint_b"],
+    "optional_vars": {},
+    "tool_allowlist": ["*"],
+    "run_directory": "drift"
+  },
+  "supply_chain": {
+    "template": "supply_chain.md",
+    "description": "Cross-namespace supply-chain and vulnerability analysis.",
+    "required_vars": ["project_name", "code_namespace", "vuln_namespace", "manifest_concept"],
+    "optional_vars": {
+      "namespace": null
+    },
+    "tool_allowlist": ["*"],
+    "run_directory": "supply_chain"
+  }
+}

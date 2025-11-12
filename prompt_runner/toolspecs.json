@@ -1,0 +1,29 @@
+{
+  "reference": "prompts/mcp_tools_reference.md",
+  "blocked_tool_names": [
+    "holomem_batchIngest",
+    "holomem_batchRemember",
+    "holomem_batchReplace",
+    "holomem_ingestPython",
+    "holomem_ingest_bundle",
+    "holomem_ingest_many_artifacts",
+    "holomem_store_concept",
+    "holomem_store_many_concepts",
+    "holomem_replace",
+    "holomem_replace_many_concepts",
+    "holomem_commit",
+    "holomem_commit_transaction",
+    "holomem_remove_concept",
+    "holomem_remove_hypothesis",
+    "holomem_gc"
+  ],
+  "blocked_substrings": [
+    "ingest",
+    "store",
+    "replace",
+    "commit",
+    "remove",
+    "delete",
+    "drop"
+  ]
+}
