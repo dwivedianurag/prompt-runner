@@ -134,6 +134,7 @@ python -m prompt_runner.cli \
     --code-namespace "$CODE_NAMESPACE" \
     --vuln-namespace "$VULN_NAMESPACE" \
     --manifest-concept "$MANIFEST_CONCEPT" \
+    --tool-timeout 180 \
     "$@"
 
 # Check exit code
