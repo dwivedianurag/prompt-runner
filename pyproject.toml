@@ -1,0 +1,82 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-orchestrator"
+version = "1.0.0"
+description = "LLM-driven MCP prompt runner for autonomous HoloMem interaction"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Internal use only"}
+authors = [
+    {name = "Your Organization"}
+]
+keywords = ["llm", "mcp", "holomem", "orchestrator", "drift-analysis", "supply-chain"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "openai>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+prompt-runner = "prompt_runner.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/your-org/llm-orchestrator"
+Issues = "https://github.com/your-org/llm-orchestrator/issues"
+
+[tool.setuptools]
+packages = ["prompt_runner", "tools", "tools.mcp"]
+
+[tool.setuptools.package-data]
+prompt_runner = [
+    "prompts/*.json",
+    "prompts/*.md",
+    "*.json",
+]
+"tools.mcp" = [
+    "*.py",
+    "*.config",
+]
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=prompt_runner --cov-report=term-missing"

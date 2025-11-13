@@ -46,16 +46,22 @@ else
 fi
 echo ""
 
-# Step 3: Activate virtual environment and install dependencies
-echo -e "${YELLOW}[3/5] Installing dependencies...${NC}"
+# Step 3: Activate virtual environment and install package
+echo -e "${YELLOW}[3/5] Installing package and dependencies...${NC}"
 source venv/bin/activate
 
-if [ -f "requirements.txt" ]; then
+if [ -f "pyproject.toml" ]; then
+    pip install --upgrade pip > /dev/null
+    pip install -e .
+    echo -e "${GREEN}✓ Package installed in editable mode${NC}"
+    echo -e "${GREEN}✓ 'prompt-runner' command is now available${NC}"
+elif [ -f "requirements.txt" ]; then
     pip install --upgrade pip > /dev/null
     pip install -r requirements.txt
     echo -e "${GREEN}✓ Dependencies installed${NC}"
+    echo -e "${YELLOW}Note: Use 'python -m prompt_runner.cli' to run (prompt-runner command not available)${NC}"
 else
-    echo -e "${RED}Error: requirements.txt not found${NC}"
+    echo -e "${RED}Error: Neither pyproject.toml nor requirements.txt found${NC}"
     exit 1
 fi
 echo ""
@@ -130,11 +136,14 @@ echo -e "3. ${BLUE}Activate virtual environment:${NC}"
 echo "   source venv/bin/activate"
 echo ""
 echo -e "4. ${BLUE}Run your first analysis:${NC}"
-echo "   # Drift analysis"
+echo "   # Using shell script wrapper"
 echo "   ./run_drift.sh <namespace> <checkpoint-a> <checkpoint-b>"
 echo ""
-echo "   # Supply chain analysis"
-echo "   ./run_supply_chain.sh <namespace> <project> <code-ns> <vuln-ns> <manifest>"
+echo "   # Or using prompt-runner command directly"
+echo "   prompt-runner --namespace <namespace> --prompt-id drift_analysis ..."
+echo ""
+echo "   # Or using Python module (if not installed with pip)"
+echo "   python -m prompt_runner.cli --namespace <namespace> --prompt-id drift_analysis ..."
 echo ""
 echo -e "For detailed usage, see: ${GREEN}README.md${NC}"
 echo ""

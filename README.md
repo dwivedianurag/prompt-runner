@@ -26,11 +26,22 @@ cd llm-orchestrator
 ```
 
 ### 2. Set Up Environment
-```bash
-# Run the setup script
-./setup.sh
 
-# Or manually:
+**Option A: Using Setup Script (Recommended)**
+```bash
+./setup.sh
+```
+
+**Option B: Manual Setup with Pip Install (Recommended)**
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -e .          # Install package in editable mode
+cp .env.example .env
+```
+
+**Option C: Manual Setup without Pip Install**
+```bash
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -55,7 +66,14 @@ source .env
 # Using shell script (recommended)
 ./run_drift.sh ns-dra-fastapi-10 checkpoint-a checkpoint-b
 
-# Or using CLI directly
+# Using prompt-runner command (if installed with pip install -e .)
+prompt-runner \
+  --namespace ns-dra-fastapi-10 \
+  --prompt-id drift_analysis \
+  --checkpoint-a 20251110-170934-holomem_graph.ns-dra-fastapi-10.npz \
+  --checkpoint-b 20251111-160629-holomem_graph.ns-dra-fastapi-10.npz
+
+# Or using Python module directly (without pip install)
 python -m prompt_runner.cli \
   --namespace ns-dra-fastapi-10 \
   --prompt-id drift_analysis \
@@ -63,15 +81,77 @@ python -m prompt_runner.cli \
   --checkpoint-b 20251111-160629-holomem_graph.ns-dra-fastapi-10.npz
 ```
 
+## Installation
+
+### Method 1: Pip Install (Recommended)
+
+Installing with pip provides a `prompt-runner` console command and handles all dependencies:
+
+```bash
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install in editable/development mode
+pip install -e .
+
+# Or install from built package
+pip install llm-orchestrator-1.0.0.tar.gz
+```
+
+**Benefits:**
+- Creates `prompt-runner` console command
+- Automatic dependency management
+- Proper package installation
+
+### Method 2: Manual Dependencies
+
+If you prefer not to install the package:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Note:** With this method, you must use `python -m prompt_runner.cli` instead of `prompt-runner`.
+
+### Method 3: Setup Script
+
+Run the automated setup script:
+
+```bash
+./setup.sh
+```
+
+This script will:
+- Check Python version
+- Create virtual environment
+- Install the package with pip
+- Create `.env` from template
+- Validate project structure
+
 ## Usage
 
 ### CLI Commands
+
+Both command formats are supported:
+
+```bash
+# If installed with pip:
+prompt-runner [options]
+
+# If using manual dependencies:
+python -m prompt_runner.cli [options]
+```
+
+The examples below use `prompt-runner` for brevity. Replace with `python -m prompt_runner.cli` if not installed via pip.
 
 #### Drift Analysis
 
 **Full Command:**
 ```bash
-python -m prompt_runner.cli \
+prompt-runner \
   --namespace <namespace> \
   --prompt-id drift_analysis \
   --checkpoint-a <baseline-checkpoint-id> \
@@ -88,7 +168,7 @@ python -m prompt_runner.cli \
 
 **Example:**
 ```bash
-python -m prompt_runner.cli \
+prompt-runner \
   --namespace ns-dra-fastapi-10 \
   --prompt-id drift_analysis \
   --checkpoint-a 20251110-170934-holomem_graph.ns-dra-fastapi-10.npz \
@@ -100,7 +180,7 @@ python -m prompt_runner.cli \
 
 **Full Command:**
 ```bash
-python -m prompt_runner.cli \
+prompt-runner \
   --namespace <namespace> \
   --prompt-id supply_chain \
   --project-name <project-name> \
@@ -119,7 +199,7 @@ python -m prompt_runner.cli \
 
 **Example:**
 ```bash
-python -m prompt_runner.cli \
+prompt-runner \
   --namespace ns-supply-chain-main \
   --prompt-id supply_chain \
   --project-name my-web-app \
@@ -133,12 +213,12 @@ python -m prompt_runner.cli \
 
 **Command:**
 ```bash
-python -m prompt_runner.cli --namespace <namespace>
+prompt-runner --namespace <namespace>
 ```
 
 **Example:**
 ```bash
-python -m prompt_runner.cli --namespace ns-dra-fastapi-10
+prompt-runner --namespace ns-dra-fastapi-10
 ```
 
 This performs namespace handshake and validation without running any prompts.
@@ -147,7 +227,7 @@ This performs namespace handshake and validation without running any prompts.
 
 You can run multiple prompts sequentially by repeating `--prompt-id`:
 ```bash
-python -m prompt_runner.cli \
+prompt-runner \
   --namespace ns-dra-fastapi-10 \
   --prompt-id drift_analysis \
   --checkpoint-a checkpoint-a-id \
@@ -416,9 +496,10 @@ python -m prompt_runner.cli \
 ```
 llm-orchestrator/
 ├── README.md                          # This file
+├── pyproject.toml                     # Package configuration (pip install)
 ├── .env.example                       # Environment variable template
 ├── .env                               # Your environment variables (git-ignored)
-├── requirements.txt                   # Python dependencies
+├── requirements.txt                   # Python dependencies (manual install)
 ├── setup.sh                           # One-time setup script
 ├── run_drift.sh                       # Drift analysis wrapper script
 ├── run_supply_chain.sh                # Supply chain analysis wrapper script

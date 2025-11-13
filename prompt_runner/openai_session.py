@@ -126,7 +126,7 @@ class OpenAISession:
                         for msg in self._messages
                     ],
                 )
-                self._log(f"openai_response: {response}", force=True)
+                self._log(f"openai_response: {response}")
             except BadRequestError as err:
                 fallback = _maybe_flip_content_type(err)
                 if fallback and fallback != self._content_type:
@@ -155,7 +155,7 @@ class OpenAISession:
                 if not cleaned:
                     continue
                 self._write_raw_response(cleaned)
-                self._log(f"raw_response: {cleaned!r}", force=True)
+                self._log(f"raw_response: {cleaned!r}")
                 try:
                     payload = self._parse_json(cleaned)
                 except InvalidJSONError as exc:
@@ -294,7 +294,8 @@ class OpenAISession:
 
     def _write_raw_response(self, text: str) -> None:
         timestamp = datetime.now(timezone.utc).isoformat()
-        print(f"[prompt-runner][raw] {text}", flush=True)
+        if not self._quiet:
+            print(f"[prompt-runner][raw] {text}", flush=True)
         if self._raw_log is not None:
             with self._raw_log.open("a", encoding="utf-8") as handle:
                 handle.write(f"{timestamp} {text}\n")

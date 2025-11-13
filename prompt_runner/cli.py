@@ -193,16 +193,17 @@ def _run_direct_preflight(
     specs: Sequence[Tuple[str, Dict[str, Any]]],
     *,
     verbose: bool,
+    quiet: bool,
 ) -> List[Dict[str, Any]]:
     results: List[Dict[str, Any]] = []
     if not specs:
         return results
     for name, arguments in specs:
         payload = dict(arguments)
-        if verbose:
+        if verbose and not quiet:
             print(f"[prompt-runner] [preflight] → {name} {payload}", flush=True)
         response = client.call(name, payload)
-        if verbose:
+        if verbose and not quiet:
             print(f"[prompt-runner] [preflight] ← {name}", flush=True)
         results.append({"tool": name, "arguments": payload, "response": response})
     return results
@@ -229,11 +230,11 @@ def _run_namespace_handshake(
     run_dir.mkdir(parents=True, exist_ok=True)
     status_path = run_dir / f"status.handshake.{timestamped}.log"
     user_prompt = HANDSHAKE_PROMPT.format(namespace=args.namespace)
-    if args.verbose:
+    if args.verbose and not args.quiet:
         print("[prompt-runner] Starting namespace handshake via LLM", flush=True)
         if preflight_specs:
             print(f"[prompt-runner] Preflight tools: {_summarize_preflight(preflight_specs)}", flush=True)
-    _run_direct_preflight(mcp_client, preflight_specs, verbose=args.verbose)
+    _run_direct_preflight(mcp_client, preflight_specs, verbose=args.verbose, quiet=args.quiet)
     session = OpenAISession(
         model=None,
         tool_specs=handshake_tools,
@@ -250,10 +251,13 @@ def _run_namespace_handshake(
         enable_truncation=not args.no_truncate_responses,
     )
     summary = session.run()
-    print(f"[prompt-runner] Handshake result: {summary}")
+    if not args.quiet:
+        print(f"[prompt-runner] Handshake result: {summary}")
 
 
-def _print_available_tools(tool_catalog: Dict[str, ToolSpec]) -> None:
+def _print_available_tools(tool_catalog: Dict[str, ToolSpec], quiet: bool = False) -> None:
+    if quiet:
+        return
     print("[prompt-runner] Tools available for further tasks:")
     for name in sorted(tool_catalog.keys()):
         print(f" - {name}")
@@ -298,7 +302,7 @@ def main(argv: List[str] | None = None) -> int:
     _ensure_namespace_ready(args.namespace, mcp_client)
 
     _run_namespace_handshake(args, handshake_tools, handshake_system_prompt, tool_timeout, heartbeat_interval, preflight_specs, mcp_client)
-    _print_available_tools(tool_catalog)
+    _print_available_tools(tool_catalog, quiet=args.quiet)
 
     # If no prompt IDs specified, exit after handshake
     if not args.prompt_id:
@@ -315,14 +319,16 @@ def main(argv: List[str] | None = None) -> int:
         # Filter tool catalog based on prompt's allowlist
         if "*" in metadata.tool_allowlist:
             filtered_tools = tool_catalog
-            print(f"[prompt-runner] Using all {len(tool_catalog)} tools")
+            if not args.quiet:
+                print(f"[prompt-runner] Using all {len(tool_catalog)} tools")
         else:
             filtered_tools = {
                 name: spec
                 for name, spec in tool_catalog.items()
                 if name in metadata.tool_allowlist
             }
-            print(f"[prompt-runner] Using {len(filtered_tools)} tools (filtered from {len(tool_catalog)})")
+            if not args.quiet:
+                print(f"[prompt-runner] Using {len(filtered_tools)} tools (filtered from {len(tool_catalog)})")
 
         # Create timestamped run directory
         timestamped = _timestamp_dir()
@@ -345,7 +351,8 @@ def main(argv: List[str] | None = None) -> int:
         prompt_system_prompt = build_system_prompt(api_reference, mcp_reference, filtered_tools.values())
 
         # Run the prompt
-        print(f"[prompt-runner] Running prompt: {prompt_id}")
+        if not args.quiet:
+            print(f"[prompt-runner] Running prompt: {prompt_id}")
         session = OpenAISession(
             model=None,  # Uses OPENAI_MODEL env var
             tool_specs=filtered_tools,  # Use filtered tools
@@ -375,7 +382,8 @@ def main(argv: List[str] | None = None) -> int:
                     "response": call.response
                 }) + "\n")
 
-        print(f"[prompt-runner] ✓ {prompt_id} complete")
+        if not args.quiet:
+            print(f"[prompt-runner] ✓ {prompt_id} complete")
         print(f"[prompt-runner]   Summary: {summary_path}")
         print(f"[prompt-runner]   Logs: {status_path}")
 

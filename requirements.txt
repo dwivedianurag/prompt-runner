@@ -1,5 +1,16 @@
 # LLM Orchestrator Dependencies
 
+# RECOMMENDED INSTALLATION METHOD:
+# Install the package with pip (includes all dependencies automatically):
+#   pip install -e .                    # Editable/development mode
+#   pip install llm-orchestrator.tar.gz # Production install from tarball
+#
+# This will install dependencies and create a 'prompt-runner' console command.
+
+# MANUAL INSTALLATION (if not using pip):
+# If you prefer to install dependencies manually without installing the package:
+#   pip install -r requirements.txt
+
 # OpenAI API client for GPT-4/GPT-5 access
 openai>=1.0.0
 
