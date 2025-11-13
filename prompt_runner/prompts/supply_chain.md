@@ -1,4 +1,13 @@
-Please perform a Supply Chain Analysis for the source code in namespace `{code_namespace}` and use vulnerability reports in `{vuln_namespace}` namespace. The main source of dependencies is the `{manifest_concept}` concept in `{code_namespace}` namespace. Use HoloMem only. Do not use cached results. Summarise findings in the next template:
+Please perform a Supply Chain Analysis for the source code in namespace `{code_namespace}` and use vulnerability reports in `{vuln_namespace}` namespace.
+
+**IMPORTANT OPTIMIZATION:** All dependency and vulnerability data is pre-aggregated in the `{manifest_concept}` concept in `{code_namespace}` namespace. This concept contains all the information you need including dependencies, versions, and associated vulnerabilities. Fetch this concept ONCE and analyze its contents directly. Do NOT perform additional graph traversal, cross-namespace searches, or path queries unless absolutely necessary - all required data is already consolidated in this single concept.
+
+**Efficient Analysis Steps:**
+1. Fetch `{manifest_concept}` from `{code_namespace}` namespace (single call to holomem_get_concept or holomem_get)
+2. Analyze the aggregated dependency and vulnerability data from the concept
+3. Generate the comprehensive report below
+
+Use HoloMem only. Do not use cached results. Summarise findings in the next template:
 ```
 # QQ Response Template
 
