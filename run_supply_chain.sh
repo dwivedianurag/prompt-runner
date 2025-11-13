@@ -1,6 +1,6 @@
 #!/bin/bash
 # run_supply_chain.sh - Wrapper script for supply chain analysis
-# Usage: ./run_supply_chain.sh <namespace> <project-name> <code-namespace> <vuln-namespace> <manifest-concept> [options]
+# Usage: ./run_supply_chain.sh <code-namespace> <vuln-namespace> <manifest-concept> [options]
 
 set -e
 
@@ -16,11 +16,9 @@ show_help() {
 Supply Chain Analysis Runner
 
 Usage:
-    $0 <namespace> <project-name> <code-namespace> <vuln-namespace> <manifest-concept> [options]
+    $0 <code-namespace> <vuln-namespace> <manifest-concept> [options]
 
 Arguments:
-    namespace           Target HoloMem namespace
-    project-name        Name of the project to analyze
     code-namespace      Namespace containing source code concepts
     vuln-namespace      Namespace containing vulnerability data
     manifest-concept    Manifest concept name (e.g., manifest.current)
@@ -29,20 +27,21 @@ Options:
     --verbose                Print progress messages
     --quiet                  Suppress console output (logs still written)
     --no-truncate-responses  Disable response truncation
-    --tool-timeout <sec>     MCP tool timeout in seconds (default: 45)
+    --tool-timeout <sec>     MCP tool timeout in seconds (default: 180)
     --heartbeat-interval <sec> Heartbeat log interval (default: 5)
+    --max-tool-calls <num>   Maximum MCP tool calls per execution (default: 20)
     --output-dir <dir>       Output directory (default: prompt_runs)
     --help                   Show this help message
 
 Examples:
     # Basic usage
-    $0 ns-supply-chain my-web-app ns-code-main ns-vuln-db manifest.current
+    $0 ns-code-main ns-vuln-db manifest.current
 
     # With verbose output
-    $0 ns-supply-chain my-web-app ns-code-main ns-vuln-db manifest.current --verbose
+    $0 ns-code-main ns-vuln-db manifest.current --verbose
 
-    # With custom timeout
-    $0 ns-supply-chain my-web-app ns-code-main ns-vuln-db manifest.current --tool-timeout 120
+    # With custom timeout and increased tool budget
+    $0 ns-code-main ns-vuln-db manifest.current --tool-timeout 300 --max-tool-calls 50
 
 Environment:
     Requires .env file with OPENAI_API_KEY, OPENAI_MODEL, and MCP_ENDPOINT.
@@ -58,7 +57,7 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
 fi
 
 # Check minimum arguments
-if [ $# -lt 5 ]; then
+if [ $# -lt 3 ]; then
     echo -e "${RED}Error: Missing required arguments${NC}"
     echo ""
     show_help
@@ -66,12 +65,10 @@ if [ $# -lt 5 ]; then
 fi
 
 # Parse positional arguments
-NAMESPACE="$1"
-PROJECT_NAME="$2"
-CODE_NAMESPACE="$3"
-VULN_NAMESPACE="$4"
-MANIFEST_CONCEPT="$5"
-shift 5
+CODE_NAMESPACE="$1"
+VULN_NAMESPACE="$2"
+MANIFEST_CONCEPT="$3"
+shift 3
 
 # Check if .env file exists
 if [ ! -f ".env" ]; then
@@ -116,8 +113,6 @@ fi
 
 # Display configuration
 echo -e "${GREEN}Configuration:${NC}"
-echo "  Namespace:         $NAMESPACE"
-echo "  Project Name:      $PROJECT_NAME"
 echo "  Code Namespace:    $CODE_NAMESPACE"
 echo "  Vuln Namespace:    $VULN_NAMESPACE"
 echo "  Manifest Concept:  $MANIFEST_CONCEPT"
@@ -128,9 +123,7 @@ echo ""
 # Run supply chain analysis
 echo -e "${GREEN}Running supply chain analysis...${NC}"
 python -m prompt_runner.cli \
-    --namespace "$NAMESPACE" \
     --prompt-id supply_chain \
-    --project-name "$PROJECT_NAME" \
     --code-namespace "$CODE_NAMESPACE" \
     --vuln-namespace "$VULN_NAMESPACE" \
     --manifest-concept "$MANIFEST_CONCEPT" \

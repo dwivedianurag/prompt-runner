@@ -44,7 +44,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", default="prompt_runs", help="Directory to store run artifacts")
     parser.add_argument("--checkpoint-a", dest="checkpoint_a", help="Baseline checkpoint id (drift prompt)")
     parser.add_argument("--checkpoint-b", dest="checkpoint_b", help="Current checkpoint id (drift prompt)")
-    parser.add_argument("--project-name", dest="project_name", help="Supply-chain project name")
+    parser.add_argument("--project-name", dest="project_name", help="[Deprecated] Project name (no longer used)")
     parser.add_argument("--code-namespace", dest="code_namespace", help="Namespace with manifests/source")
     parser.add_argument("--vuln-namespace", dest="vuln_namespace", help="Namespace containing vulnerability data")
     parser.add_argument("--manifest-concept", dest="manifest_concept", help="Manifest concept name (e.g., manifest.current)")
@@ -57,6 +57,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--heartbeat-interval",
         type=float,
         help="Seconds between heartbeat logs while waiting on MCP tools (default PROMPT_RUNNER_HEARTBEAT or 5).",
+    )
+    parser.add_argument(
+        "--max-tool-calls",
+        type=int,
+        default=20,
+        help="Maximum number of MCP tool calls allowed per prompt execution (default 20).",
     )
     parser.add_argument(
         "--quiet",
@@ -359,7 +365,7 @@ def main(argv: List[str] | None = None) -> int:
             system_prompt=prompt_system_prompt,  # Use rebuilt system prompt
             user_prompt=user_prompt,
             namespace=args.namespace,
-            max_calls=20,  # Default max tool calls
+            max_calls=args.max_tool_calls,  # Configurable max tool calls
             verbose=args.verbose,
             tool_timeout=tool_timeout,
             heartbeat_interval=heartbeat_interval,

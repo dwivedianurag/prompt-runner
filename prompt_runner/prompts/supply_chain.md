@@ -1,4 +1,4 @@
-Please perform a Supply Chain Analysis on the project `{project_name}` in namespace `{code_namespace}` and use vulnerability reports in `{vuln_namespace}` namespace. The main source of dependencies is the `{manifest_concept}` concept in `{code_namespace}` namespace. Use HoloMem only. Do not use cached results. Summarise findings in the next template:
+Please perform a Supply Chain Analysis for the source code in namespace `{code_namespace}` and use vulnerability reports in `{vuln_namespace}` namespace. The main source of dependencies is the `{manifest_concept}` concept in `{code_namespace}` namespace. Use HoloMem only. Do not use cached results. Summarise findings in the next template:
 ```
 # QQ Response Template
 

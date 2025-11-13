@@ -181,9 +181,7 @@ prompt-runner \
 **Full Command:**
 ```bash
 prompt-runner \
-  --namespace <namespace> \
   --prompt-id supply_chain \
-  --project-name <project-name> \
   --code-namespace <code-namespace> \
   --vuln-namespace <vulnerability-namespace> \
   --manifest-concept <manifest-concept-name> \
@@ -191,7 +189,7 @@ prompt-runner \
   [--quiet] \
   [--output-dir prompt_runs] \
   [--no-truncate-responses] \
-  [--tool-timeout 45] \
+  [--tool-timeout 180] \
   [--heartbeat-interval 5] \
   [--preflight-tool <tool>=<json-args>] \
   [--no-preflight]
@@ -200,9 +198,7 @@ prompt-runner \
 **Example:**
 ```bash
 prompt-runner \
-  --namespace ns-supply-chain-main \
   --prompt-id supply_chain \
-  --project-name my-web-app \
   --code-namespace ns-code-main \
   --vuln-namespace ns-vuln-db \
   --manifest-concept manifest.current \
@@ -247,16 +243,16 @@ prompt-runner \
 | `--prompt-id` | Prompt to execute (`drift_analysis`, `supply_chain`). Repeatable for multiple prompts. | None | No* |
 | `--checkpoint-a` | Baseline checkpoint ID (drift analysis only) | None | Yes (for drift) |
 | `--checkpoint-b` | Current checkpoint ID (drift analysis only) | None | Yes (for drift) |
-| `--project-name` | Project name (supply chain only) | None | Yes (for supply chain) |
-| `--code-namespace` | Namespace containing source code concepts (supply chain) | Same as `--namespace` | Yes (for supply chain) |
+| `--code-namespace` | Namespace containing source code concepts (supply chain) | None | Yes (for supply chain) |
 | `--vuln-namespace` | Namespace containing vulnerability data (supply chain) | None | Yes (for supply chain) |
 | `--manifest-concept` | Manifest concept name, e.g., `manifest.current` (supply chain) | None | Yes (for supply chain) |
 | `--verbose` | Print progress messages while running | `False` | No |
 | `--quiet` | Suppress console output (logs still written to files) | `False` | No |
 | `--output-dir` | Directory to store run artifacts | `prompt_runs` | No |
 | `--no-truncate-responses` | Disable automatic response truncation (enabled by default to prevent context overflow) | `False` | No |
-| `--tool-timeout` | Seconds to wait for each MCP call before timing out | `45` (or `PROMPT_RUNNER_TOOL_TIMEOUT`) | No |
+| `--tool-timeout` | Seconds to wait for each MCP call before timing out | `180` (or `PROMPT_RUNNER_TOOL_TIMEOUT`) | No |
 | `--heartbeat-interval` | Seconds between heartbeat logs while waiting on MCP tools | `5` (or `PROMPT_RUNNER_HEARTBEAT`) | No |
+| `--max-tool-calls` | Maximum number of MCP tool calls allowed per prompt execution | `20` | No |
 | `--preflight-tool` | Require an MCP tool to run before the main prompt (format: `tool` or `tool=<JSON args>`). Repeatable. | Auto (namespace switch/get) | No |
 | `--no-preflight` | Disable automatic preflight tool instructions | `False` | No |
 
@@ -286,21 +282,19 @@ prompt-runner \
 
 **Usage:**
 ```bash
-./run_supply_chain.sh <namespace> <project-name> <code-namespace> <vuln-namespace> <manifest-concept> [options]
+./run_supply_chain.sh <code-namespace> <vuln-namespace> <manifest-concept> [options]
 ```
 
 **Example:**
 ```bash
 ./run_supply_chain.sh \
-  ns-supply-chain-main \
-  my-web-app \
   ns-code-main \
   ns-vuln-db \
   manifest.current \
   --verbose
 ```
 
-**Options:** Same as CLI flags (e.g., `--verbose`, `--quiet`)
+**Options:** Same as CLI flags (e.g., `--verbose`, `--quiet`, `--tool-timeout`)
 
 ## Output Structure
 

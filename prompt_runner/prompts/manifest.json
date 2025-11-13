@@ -57,10 +57,8 @@
   "supply_chain": {
     "template": "supply_chain.md",
     "description": "Cross-namespace supply-chain and vulnerability analysis.",
-    "required_vars": ["project_name", "code_namespace", "vuln_namespace", "manifest_concept"],
-    "optional_vars": {
-      "namespace": null
-    },
+    "required_vars": ["code_namespace", "vuln_namespace", "manifest_concept"],
+    "optional_vars": {},
     "tool_allowlist": [
       "holomem_get",
       "holomem_get_concept",
